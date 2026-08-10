@@ -1,0 +1,44 @@
+---
+description: Core project standards and the desired-outcome contract. Always applied.
+alwaysApply: true
+---
+
+# Always-on rules for Camp Check-In
+
+Before planning or editing, read `docs/DESIRED_OUTCOME.md`. Treat its invariants and
+Definition of Done as hard constraints. If a request conflicts with them, STOP and
+say so instead of silently working around them.
+
+## Working style
+- Make a short plan first (3–7 bullets) for anything beyond a one-line change. State
+  which files you'll touch and why.
+- Prefer the smallest change that fully satisfies the request. Don't refactor
+  unrelated code or add dependencies without saying why.
+- After editing, run `npm run build` (or tell me to) and fix type errors before claiming done.
+- Before declaring any non-trivial change "done", run the `pre-ship-review` skill
+  (`.claude/skills/pre-ship-review/SKILL.md`) as a checklist against your own diff, or
+  tell me to run it in the Reviewer chat. Do not call a change complete until it would
+  PASS that review.
+- End every non-trivial change with a "Self-check" section that ticks the Definition
+  of Done from the outcome doc, and calls out anything you were unsure about.
+
+## Hard technical constraints
+- Never write `checked_in_at` / `checked_out_at` directly from client code. Use the
+  RPCs: `check_in`, `undo_check_in`, `check_out`, `undo_check_out`.
+- Never put the service-role key (or any secret) in a `NEXT_PUBLIC_` variable or in
+  client components. Server routes / scripts only.
+- Keep `hooks/useRegistrants.ts` the single realtime source of truth. Don't add a
+  second parallel data path for the roster.
+- All schema changes are new `.sql` migration files under `supabase/`. Never instruct
+  the user to hand-edit tables in the dashboard for a code change.
+- Keep RLS enabled. If a query needs elevated rights, it belongs in a server route
+  using the service role, not a relaxed policy.
+
+## UI constraints
+- Touch targets ≥ 44px. Layout must work at 360px width. Keep high contrast.
+- No `localStorage`/`sessionStorage` reliance for correctness; the realtime store owns state.
+- Keep copy plain and volunteer-friendly. No jargon in user-facing text.
+
+## When unsure
+Ask one focused question, or state your assumption explicitly and proceed. Never
+guess silently on anything touching the invariants.

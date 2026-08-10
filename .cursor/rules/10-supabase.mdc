@@ -1,0 +1,18 @@
+---
+description: Supabase schema, RLS, and realtime conventions.
+globs: ["supabase/**", "hooks/**", "lib/supabase/**", "app/api/**"]
+---
+
+# Supabase conventions (auto-applied to DB/realtime/server files)
+
+- Every table has RLS enabled with explicit policies. New tables must ship policies
+  in the same migration.
+- State transitions that must be conflict-free are `security definer` functions with a
+  guarded `UPDATE ... WHERE <valid-transition>` so concurrent callers can't double-apply.
+- Add new realtime tables to the `supabase_realtime` publication in the migration.
+- Audit every critical mutation into `audit_log` (actor + action + optional detail).
+- Migrations are additive and idempotent where possible (`add column if not exists`,
+  `create ... if not exists`). Never rewrite `schema.sql` in place for a change —
+  add a new numbered migration (e.g. `supabase/002_add_cabins.sql`).
+- Server routes that use the service role must verify a shared secret or the caller's
+  session first. Never expose service-role capability to an unauthenticated path.

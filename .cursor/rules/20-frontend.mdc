@@ -1,0 +1,15 @@
+---
+description: Frontend/PWA and mobile-first conventions.
+globs: ["app/**", "components/**", "public/**"]
+---
+
+# Frontend conventions (auto-applied to UI files)
+
+- Mobile-first: design at 360px, scale up. Primary actions are big and bottom-anchored
+  for one-handed use.
+- Optimistic updates for user actions; reconcile with server; roll back + toast on error.
+- Keep the roster list fast (content-visibility / virtualization for large lists).
+- No new heavy dependency for something a small amount of React/CSS handles.
+- User-facing strings are plain and reassuring. Error messages tell the volunteer what
+  to do next ("check your connection and try again"), not stack traces.
+- Preserve PWA installability and the offline app-shell behavior in `public/sw.js`.
