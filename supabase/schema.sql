@@ -1,6 +1,9 @@
 -- ============================================================
 -- Camp Check-In — Supabase schema
 -- Run this once in the Supabase SQL editor (or `supabase db push`).
+-- This file is kept consolidated to the CURRENT state, so a fresh install runs it
+-- and is already up to date. The numbered supabase/0NN_*.sql migrations exist only
+-- to move already-deployed databases forward; fresh installs do not replay them.
 -- ============================================================
 
 -- ---------- Roles ----------
@@ -70,16 +73,15 @@ create table public.registrants (
   cabin             text,          -- future
   small_group       text,          -- future
 
-  -- Liability form (updated by Tally webhook)
+  -- Liability form (set manually in-app via the set_liability RPC)
   liability_complete     boolean not null default false,
   liability_submitted_at timestamptz,
   liability_payload      jsonb,
 
-  -- Check-in / check-out state (single source of truth)
+  -- Check-in state (single source of truth). Two-state model: a camper is either
+  -- checked in or not; there is no checked-out state.
   checked_in_at     timestamptz,
   checked_in_by     uuid references public.profiles(id),
-  checked_out_at    timestamptz,
-  checked_out_by    uuid references public.profiles(id),
 
   -- Emergency information
   emergency_name         text,
@@ -110,14 +112,14 @@ create table public.audit_log (
   id            bigint generated always as identity primary key,
   registrant_id uuid references public.registrants(id) on delete set null,
   actor_id      uuid references public.profiles(id),
-  action        text not null,   -- check_in | undo_check_in | check_out | undo_check_out | edit | create | delete | liability_webhook
+  action        text not null,   -- check_in | undo_check_in | set_liability | edit | create | delete
   detail        jsonb,
   created_at    timestamptz not null default now()
 );
 create index audit_registrant_idx on public.audit_log (registrant_id);
 create index audit_created_idx    on public.audit_log (created_at desc);
 
--- ---------- Atomic check-in / check-out RPCs ----------
+-- ---------- Atomic check-in + liability RPCs ----------
 -- These prevent duplicate check-ins under concurrency: the UPDATE's WHERE
 -- clause only matches when the state transition is valid, so two volunteers
 -- pressing CHECK IN at once results in exactly one successful transition.
@@ -127,8 +129,7 @@ returns public.registrants language plpgsql security definer set search_path = p
 declare r public.registrants;
 begin
   update public.registrants
-     set checked_in_at = now(), checked_in_by = auth.uid(),
-         checked_out_at = null, checked_out_by = null
+     set checked_in_at = now(), checked_in_by = auth.uid()
    where id = reg_id and checked_in_at is null
    returning * into r;
   if r.id is null then
@@ -153,38 +154,33 @@ begin
   return r;
 end $$;
 
-create or replace function public.check_out(reg_id uuid)
+-- Manual, audited liability toggle usable by any authenticated volunteer.
+create or replace function public.set_liability(reg_id uuid, complete boolean)
 returns public.registrants language plpgsql security definer set search_path = public as $$
 declare r public.registrants;
 begin
   update public.registrants
-     set checked_out_at = now(), checked_out_by = auth.uid()
-   where id = reg_id and checked_in_at is not null and checked_out_at is null
+     set liability_complete = complete
+   where id = reg_id
    returning * into r;
   if r.id is null then
-    raise exception 'CANNOT_CHECK_OUT' using errcode = 'P0001';
+    raise exception 'REGISTRANT_NOT_FOUND' using errcode = 'P0001';
   end if;
-  insert into audit_log (registrant_id, actor_id, action) values (reg_id, auth.uid(), 'check_out');
+  insert into audit_log (registrant_id, actor_id, action, detail)
+    values (reg_id, auth.uid(), 'set_liability', jsonb_build_object('complete', complete));
   return r;
 end $$;
 
-create or replace function public.undo_check_out(reg_id uuid)
-returns public.registrants language plpgsql security definer set search_path = public as $$
-declare r public.registrants;
-begin
-  update public.registrants
-     set checked_out_at = null, checked_out_by = null
-   where id = reg_id and checked_out_at is not null
-   returning * into r;
-  if r.id is null then
-    raise exception 'NOT_CHECKED_OUT' using errcode = 'P0001';
-  end if;
-  insert into audit_log (registrant_id, actor_id, action) values (reg_id, auth.uid(), 'undo_check_out');
-  return r;
-end $$;
+-- Execute grants. SECURITY DEFINER functions get PUBLIC execute by default, so
+-- check_in and set_liability revoke it first (mirrors migration 002) to keep anon
+-- out. undo_check_in's PUBLIC grant is a separate follow-up and left as-is here.
+revoke all on function public.check_in(uuid) from public;
+grant execute on function public.check_in(uuid) to authenticated;
 
-grant execute on function public.check_in(uuid), public.undo_check_in(uuid),
-  public.check_out(uuid), public.undo_check_out(uuid) to authenticated;
+revoke all on function public.set_liability(uuid, boolean) from public;
+grant execute on function public.set_liability(uuid, boolean) to authenticated;
+
+grant execute on function public.undo_check_in(uuid) to authenticated;
 
 -- ---------- Row Level Security ----------
 alter table public.profiles    enable row level security;

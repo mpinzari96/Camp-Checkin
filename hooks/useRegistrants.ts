@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { Registrant } from '@/lib/types';
 
-type Action = 'check_in' | 'undo_check_in' | 'check_out' | 'undo_check_out';
+type Action = 'check_in' | 'undo_check_in';
 
 /**
  * Single source of truth for the roster on every device.
@@ -80,13 +80,8 @@ export function useRegistrants() {
 
       const nowIso = new Date().toISOString();
       const optimistic: Registrant = { ...before };
-      if (action === 'check_in') {
-        optimistic.checked_in_at = nowIso;
-        optimistic.checked_out_at = null;
-      }
+      if (action === 'check_in') optimistic.checked_in_at = nowIso;
       if (action === 'undo_check_in') optimistic.checked_in_at = null;
-      if (action === 'check_out') optimistic.checked_out_at = nowIso;
-      if (action === 'undo_check_out') optimistic.checked_out_at = null;
       setRows((prev) => new Map(prev).set(id, optimistic));
 
       const { data, error } = await supabase.rpc(action, { reg_id: id });
@@ -100,15 +95,39 @@ export function useRegistrants() {
             ? 'Another volunteer just checked this camper in.'
             : error.message.includes('NOT_CHECKED_IN')
             ? 'This camper is not checked in.'
-            : error.message.includes('CANNOT_CHECK_OUT')
-            ? 'Check the camper in before checking out.'
-            : error.message.includes('NOT_CHECKED_OUT')
-            ? 'This camper is not checked out.'
             : 'Could not save — check your connection and try again.';
         return { ok: false, message: friendly };
       }
       const serverRow = data as Registrant;
       setRows((prev) => new Map(prev).set(id, serverRow));
+      return { ok: true };
+    },
+    [rows, supabase]
+  );
+
+  /**
+   * Toggle a registrant's liability form. Optimistic like check-in, but routed
+   * through the atomic `set_liability` RPC so every change is audited (actor +
+   * new value) and usable by any authenticated volunteer.
+   */
+  const setLiability = useCallback(
+    async (id: string, complete: boolean): Promise<{ ok: boolean; message?: string }> => {
+      if (pending.current.has(id)) return { ok: false, message: 'Already saving…' };
+      const before = rows.get(id);
+      if (!before) return { ok: false, message: 'Registrant not found.' };
+      pending.current.add(id);
+
+      setRows((prev) => new Map(prev).set(id, { ...before, liability_complete: complete }));
+
+      const { data, error } = await supabase.rpc('set_liability', { reg_id: id, complete });
+      pending.current.delete(id);
+
+      if (error) {
+        // Roll back to the pre-optimistic row; realtime will deliver the truth.
+        setRows((prev) => new Map(prev).set(id, before));
+        return { ok: false, message: 'Could not save — check your connection and try again.' };
+      }
+      setRows((prev) => new Map(prev).set(id, data as Registrant));
       return { ok: true };
     },
     [rows, supabase]
@@ -138,5 +157,5 @@ export function useRegistrants() {
     [rows]
   );
 
-  return { list, byId: rows, loading, error, online, mutate, addRegistrant };
+  return { list, byId: rows, loading, error, online, mutate, setLiability, addRegistrant };
 }

@@ -23,8 +23,12 @@ say so instead of silently working around them.
   of Done from the outcome doc, and calls out anything you were unsure about.
 
 ## Hard technical constraints
-- Never write `checked_in_at` / `checked_out_at` directly from client code. Use the
-  RPCs: `check_in`, `undo_check_in`, `check_out`, `undo_check_out`.
+- Check-in is two-state (Checked in / Not checked in); there is no checked-out state.
+  Never write `checked_in_at` directly from client code. Use the RPCs `check_in` and
+  `undo_check_in`.
+- Liability is set manually in-app only: existing liability changes go through the
+  `set_liability` RPC. Never introduce an automatic liability-import endpoint without
+  a deliberate decision recorded in `docs/DESIRED_OUTCOME.md`.
 - Never put the service-role key (or any secret) in a `NEXT_PUBLIC_` variable or in
   client components. Server routes / scripts only.
 - Keep `hooks/useRegistrants.ts` the single realtime source of truth. Don't add a

@@ -29,8 +29,6 @@ export interface Registrant {
   liability_submitted_at: string | null;
   checked_in_at: string | null;
   checked_in_by: string | null;
-  checked_out_at: string | null;
-  checked_out_by: string | null;
   emergency_name: string | null;
   emergency_relationship: string | null;
   emergency_phone: string | null;

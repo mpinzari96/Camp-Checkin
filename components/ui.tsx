@@ -16,7 +16,6 @@ export function LiabilityChip({ r, large = false }: { r: Registrant; large?: boo
 
 export function CheckStateChip({ r, large = false }: { r: Registrant; large?: boolean }) {
   const cls = large ? 'badge-lg' : 'chip';
-  if (r.checked_out_at) return <span className={`${cls} warn`}>🟡 Checked out</span>;
   if (r.checked_in_at) return <span className={`${cls} ok`}>🟢 Checked in</span>;
   return <span className={`${cls} idle`}>⚪ Not checked in</span>;
 }

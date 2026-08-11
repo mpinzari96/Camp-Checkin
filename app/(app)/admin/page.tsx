@@ -33,7 +33,7 @@ const EDITABLE: Array<{ key: keyof Registrant; label: string; type?: string }> =
 const CSV_COLS: Array<keyof Registrant> = [
   'first_name', 'last_name', 'preferred_name', 'age', 'gender', 'church', 'city', 'state',
   'email', 'phone', 'merch_size', 'registration_status', 'liability_complete',
-  'checked_in_at', 'checked_out_at', 'emergency_name', 'emergency_relationship',
+  'checked_in_at', 'emergency_name', 'emergency_relationship',
   'emergency_phone', 'allergies', 'medical_notes', 'special_notes', 'notes',
 ];
 
@@ -47,7 +47,7 @@ function toCsv(rows: Registrant[]) {
 
 export default function AdminPage() {
   const supabase = useMemo(() => createClient(), []);
-  const { list, loading, mutate } = useRegistrants();
+  const { list, loading, mutate, setLiability } = useRegistrants();
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Registrant | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -80,8 +80,7 @@ export default function AdminPage() {
 
   const stats = useMemo(() => ({
     total: list.length,
-    in: list.filter((r) => r.checked_in_at && !r.checked_out_at).length,
-    out: list.filter((r) => r.checked_out_at).length,
+    in: list.filter((r) => r.checked_in_at).length,
     missing: list.filter((r) => !r.liability_complete).length,
   }), [list]);
 
@@ -108,11 +107,8 @@ export default function AdminPage() {
   }
 
   async function toggleLiability(r: Registrant) {
-    const { error } = await supabase
-      .from('registrants')
-      .update({ liability_complete: !r.liability_complete })
-      .eq('id', r.id);
-    if (error) setToast('Update failed.');
+    const res = await setLiability(r.id, !r.liability_complete);
+    if (!res.ok) setToast(res.message ?? 'Update failed.');
   }
 
   if (isAdmin === false) {
@@ -130,7 +126,6 @@ export default function AdminPage() {
       <div className="admin-grid">
         <div className="stat"><b>{stats.total}</b><span>Registered</span></div>
         <div className="stat"><b>{stats.in}</b><span>Checked in</span></div>
-        <div className="stat"><b>{stats.out}</b><span>Checked out</span></div>
         <div className="stat"><b>{stats.missing}</b><span>Missing forms</span></div>
       </div>
 
@@ -164,7 +159,7 @@ export default function AdminPage() {
               <button className="btn-small" onClick={() => toggleLiability(r)}>
                 {r.liability_complete ? 'Mark form missing' : 'Mark form complete'}
               </button>
-              {r.checked_in_at && !r.checked_out_at
+              {r.checked_in_at
                 ? <button className="btn-small" onClick={() => mutate(r.id, 'undo_check_in')}>Undo check-in</button>
                 : <button className="btn-small" onClick={() => mutate(r.id, 'check_in')}>Check in</button>}
               <button className="btn-small danger" onClick={() => remove(r)}>Delete</button>

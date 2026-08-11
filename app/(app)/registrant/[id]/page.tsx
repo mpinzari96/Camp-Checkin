@@ -13,18 +13,33 @@ function fmt(ts: string | null) {
 
 export default function RegistrantProfile() {
   const { id } = useParams<{ id: string }>();
-  const { byId, loading, mutate } = useRegistrants();
+  const { byId, loading, mutate, setLiability } = useRegistrants();
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const r = useMemo(() => byId.get(id), [byId, id]);
 
-  async function act(action: 'check_in' | 'undo_check_in' | 'check_out' | 'undo_check_out', label: string) {
+  async function act(action: 'check_in' | 'undo_check_in', label: string) {
     if (!r || busy) return;
     setBusy(true);
     const res = await mutate(r.id, action);
     setBusy(false);
     setToast(res.ok ? label : res.message ?? 'Something went wrong.');
+  }
+
+  async function toggleLiability() {
+    if (!r || busy) return;
+    const next = !r.liability_complete;
+    setBusy(true);
+    const res = await setLiability(r.id, next);
+    setBusy(false);
+    setToast(
+      res.ok
+        ? next
+          ? 'Liability form marked complete.'
+          : 'Liability form marked not complete.'
+        : res.message ?? 'Something went wrong.'
+    );
   }
 
   if (loading) return <main className="container"><p className="empty">Loading…</p></main>;
@@ -36,8 +51,7 @@ export default function RegistrantProfile() {
     );
   }
 
-  const checkedIn = !!r.checked_in_at && !r.checked_out_at;
-  const checkedOut = !!r.checked_out_at;
+  const checkedIn = !!r.checked_in_at;
   const hasMedical = !!(r.medical_notes || r.allergies || r.special_notes);
 
   return (
@@ -54,6 +68,16 @@ export default function RegistrantProfile() {
         <div className="badges">
           <LiabilityChip r={r} large />
           <CheckStateChip r={r} large />
+        </div>
+        <div className="row-actions">
+          <button
+            className="btn-small"
+            disabled={busy}
+            aria-pressed={r.liability_complete}
+            onClick={toggleLiability}
+          >
+            {r.liability_complete ? 'Mark liability form not complete' : 'Mark liability form complete'}
+          </button>
         </div>
       </div>
 
@@ -91,21 +115,6 @@ export default function RegistrantProfile() {
       <section className="section" aria-label="Check-in history">
         <h2>Check-in history</h2>
         <div className="kv"><span className="k">Checked in</span><span className="v">{fmt(r.checked_in_at) ?? 'Not yet'}</span></div>
-        <div className="kv"><span className="k">Checked out</span><span className="v">{fmt(r.checked_out_at) ?? '—'}</span></div>
-        {(checkedIn || checkedOut) && (
-          <div className="row-actions">
-            {checkedIn && (
-              <button className="btn-small danger" disabled={busy} onClick={() => act('undo_check_in', 'Check-in undone.')}>
-                Undo check-in
-              </button>
-            )}
-            {checkedOut && (
-              <button className="btn-small danger" disabled={busy} onClick={() => act('undo_check_out', 'Check-out undone.')}>
-                Undo check-out
-              </button>
-            )}
-          </div>
-        )}
       </section>
 
       {r.notes && (
@@ -117,23 +126,17 @@ export default function RegistrantProfile() {
 
       <div className="actionbar">
         <div className="actionbar-inner">
-          {!checkedIn && !checkedOut && (
+          {!checkedIn ? (
             <button className="btn-primary" disabled={busy} onClick={() => act('check_in', `${r.first_name} checked in.`)}>
               CHECK IN
             </button>
-          )}
-          {checkedIn && (
+          ) : (
             <>
               <button className="btn-primary done" disabled>✓ CHECKED IN</button>
-              <button className="btn-secondary" disabled={busy} onClick={() => act('check_out', `${r.first_name} checked out.`)}>
-                Check out
+              <button className="btn-secondary" disabled={busy} onClick={() => act('undo_check_in', 'Check-in undone.')}>
+                Undo check-in
               </button>
             </>
-          )}
-          {checkedOut && (
-            <button className="btn-primary" disabled={busy} onClick={() => act('check_in', `${r.first_name} checked back in.`)}>
-              CHECK BACK IN
-            </button>
           )}
         </div>
       </div>

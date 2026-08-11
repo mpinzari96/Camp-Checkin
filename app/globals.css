@@ -250,7 +250,7 @@ table.audit th { color: var(--muted); font-size: 11.5px; text-transform: upperca
 
 .row-actions { display: flex; gap: 8px; padding: 10px 16px 14px; flex-wrap: wrap; }
 .btn-small {
-  min-height: 42px; padding: 8px 14px; border-radius: 10px; font-size: 14px; font-weight: 700;
+  min-height: 44px; padding: 8px 14px; border-radius: 10px; font-size: 14px; font-weight: 700;
   background: var(--moss); color: var(--pine-deep);
 }
 .btn-small.danger { background: var(--bad-bg); color: var(--bad); }

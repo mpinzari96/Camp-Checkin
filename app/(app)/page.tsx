@@ -19,7 +19,7 @@ export default function Dashboard() {
 
   const stats = useMemo(() => {
     const total = list.length;
-    const checkedIn = list.filter((r) => r.checked_in_at && !r.checked_out_at).length;
+    const checkedIn = list.filter((r) => r.checked_in_at).length;
     const missing = list.filter((r) => !r.liability_complete).length;
     return { total, checkedIn, missing };
   }, [list]);

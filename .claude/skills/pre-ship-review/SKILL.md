@@ -23,6 +23,30 @@ diff. Being in the same tool/repo as the author does not make their choices righ
    (file + line or a quoted snippet). Don't hand-wave.
 5. End with a verdict block (format at the bottom).
 
+## Scope rule (apply before deciding what blocks)
+Only mark an issue **BLOCKING** if *this diff introduced or worsened it*. An issue that
+already existed on the main branch and is merely visible near the changed code is NOT a
+blocker for this task — list it under a separate **"Pre-existing (out of scope)"**
+section so the author can log it as a follow-up, and do not fail the task for it.
+When unsure whether the diff introduced an issue, check `git blame`/the diff: if the
+offending lines are unchanged by this diff, it's pre-existing. A change that *widens* a
+pre-existing problem (e.g. adds a second unaudited path) does count as introduced.
+
+## Documented decisions (don't re-litigate style, DO block real defects)
+If a choice is explicitly recorded in `docs/DESIRED_OUTCOME.md` or the task prompt (e.g.
+"keep `schema.sql` as the bootstrap baseline"), do not block it merely because you'd
+have chosen differently — architectural style is the author's call. BUT a documented
+decision is not automatically safe. Before deciding:
+- To block it, you must name a **concrete failure mode**: exactly what breaks or
+  diverges, and the reachable path that triggers it (e.g. "a fresh install runs
+  `schema.sql` alone → checkout columns exist while the UI assumes two-state → a still-
+  granted `check_out` RPC is callable and writes a column nothing reads"). Cite file:line.
+- If you cannot name a concrete, reachable failure mode, downgrade it to a
+  **non-blocking suggestion** framed as "you chose X; I'd have chosen Y because …".
+- Redundancy, verbosity, or "not how I'd do it" alone are never blockers.
+This forces disagreement with a decision to be evidence-based: block only when you can
+show harm, not when you simply prefer another approach.
+
 ## Invariant checklist (any FAIL here blocks shipping)
 - [ ] **No direct check-in writes.** Search the diff for `checked_in_at`, `checked_out_at`.
       Any client-side assignment outside the RPC path is a FAIL.
@@ -50,11 +74,15 @@ diff. Being in the same tool/repo as the author does not make their choices righ
 ## Output format (always end with this)
 ```
 VERDICT: PASS | FAIL
-Blocking issues:
+Blocking issues (introduced or worsened by THIS diff only):
   1. <file:line> — <what's wrong> — <exact fix>
+Pre-existing (out of scope — log as follow-up, does NOT block this task):
+  - <file:line> — <what's wrong> — <why it predates this diff>
 Non-blocking suggestions:
   - <...>
 Build: <passed | failed with N errors>
-Invariants: <all held | which ones failed>
+Invariants: <all held | which ones failed — and whether the failure is from this diff>
 ```
+A task FAILs only if the **Blocking issues** section is non-empty. Pre-existing issues
+never, on their own, cause a FAIL.
 If FAIL, do not modify code in this pass — report only, so the fix is a deliberate next step.
