@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { Registrant } from '@/lib/types';
+import type { StatusFilter } from '@/lib/search';
 
 /* ---------- Status language (consistent everywhere) ---------- */
 
@@ -18,6 +19,45 @@ export function CheckStateChip({ r, large = false }: { r: Registrant; large?: bo
   const cls = large ? 'badge-lg' : 'chip';
   if (r.checked_in_at) return <span className={`${cls} ok`}>🟢 Checked in</span>;
   return <span className={`${cls} idle`}>⚪ Not checked in</span>;
+}
+
+/* ---------- Status filter tiles ---------- */
+
+/**
+ * The stat tiles double as the roster status filter. Counts always show the true
+ * totals for the whole roster; tapping a tile filters the list to that group, and
+ * tapping the active tile (or Registered) returns to showing everyone.
+ */
+export function StatFilters({
+  counts,
+  active,
+  onChange,
+  variant = 'stats',
+}: {
+  counts: { total: number; checkedIn: number; missing: number };
+  active: StatusFilter;
+  onChange: (f: StatusFilter) => void;
+  variant?: 'stats' | 'admin-grid';
+}) {
+  const tile = (key: StatusFilter, n: number, label: string) => (
+    <button
+      type="button"
+      className={`stat${active === key ? ' active' : ''}`}
+      aria-pressed={active === key}
+      onClick={() => onChange(active === key ? 'all' : key)}
+    >
+      <b>{n}</b>
+      <span>{label}</span>
+    </button>
+  );
+
+  return (
+    <div className={variant} aria-label="Filter roster by status">
+      {tile('all', counts.total, 'Registered')}
+      {tile('checked_in', counts.checkedIn, 'Checked in')}
+      {tile('missing', counts.missing, 'Missing forms')}
+    </div>
+  );
 }
 
 /* ---------- Toast ---------- */

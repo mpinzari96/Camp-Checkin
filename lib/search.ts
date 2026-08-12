@@ -28,3 +28,13 @@ export function search(index: Fuse<Registrant>, all: Registrant[], q: string): R
   if (!query) return all;
   return index.search(query).map((r) => r.item);
 }
+
+/** Roster status filter shared by the dashboard and admin views. */
+export type StatusFilter = 'all' | 'checked_in' | 'missing';
+
+/** Narrow a list of registrants to a status group. `all` returns the list unchanged. */
+export function applyStatusFilter(rows: Registrant[], f: StatusFilter): Registrant[] {
+  if (f === 'checked_in') return rows.filter((r) => r.checked_in_at != null);
+  if (f === 'missing') return rows.filter((r) => !r.liability_complete);
+  return rows;
+}

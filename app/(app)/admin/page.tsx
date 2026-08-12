@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRegistrants } from '@/hooks/useRegistrants';
-import { buildIndex, search } from '@/lib/search';
-import { CheckStateChip, LiabilityChip, Toast } from '@/components/ui';
+import { buildIndex, search, applyStatusFilter, type StatusFilter } from '@/lib/search';
+import { CheckStateChip, LiabilityChip, StatFilters, Toast } from '@/components/ui';
 import type { AuditRow, Registrant } from '@/lib/types';
 
 const EDITABLE: Array<{ key: keyof Registrant; label: string; type?: string }> = [
@@ -49,6 +49,7 @@ export default function AdminPage() {
   const supabase = useMemo(() => createClient(), []);
   const { list, loading, mutate, setLiability } = useRegistrants();
   const [q, setQ] = useState('');
+  const [filter, setFilter] = useState<StatusFilter>('all');
   const [editing, setEditing] = useState<Registrant | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [audit, setAudit] = useState<AuditRow[]>([]);
@@ -76,7 +77,10 @@ export default function AdminPage() {
   }, [supabase, isAdmin, list]);
 
   const index = useMemo(() => buildIndex(list), [list]);
-  const results = useMemo(() => search(index, list, q), [index, list, q]);
+  const results = useMemo(
+    () => applyStatusFilter(search(index, list, q), filter),
+    [index, list, q, filter]
+  );
 
   const stats = useMemo(() => ({
     total: list.length,
@@ -123,11 +127,12 @@ export default function AdminPage() {
     <main className="container">
       <Link href="/" className="backlink">← Check-in</Link>
 
-      <div className="admin-grid">
-        <div className="stat"><b>{stats.total}</b><span>Registered</span></div>
-        <div className="stat"><b>{stats.in}</b><span>Checked in</span></div>
-        <div className="stat"><b>{stats.missing}</b><span>Missing forms</span></div>
-      </div>
+      <StatFilters
+        counts={{ total: stats.total, checkedIn: stats.in, missing: stats.missing }}
+        active={filter}
+        onChange={setFilter}
+        variant="admin-grid"
+      />
 
       <div className="row-actions" style={{ padding: '4px 0 0' }}>
         <button className="btn-small" onClick={exportCsv}>Export CSV</button>
@@ -166,6 +171,23 @@ export default function AdminPage() {
             </div>
           </div>
         ))}
+        {!loading && results.length === 0 && (
+          q.trim() ? (
+            filter === 'checked_in' ? (
+              <p className="empty">No checked-in campers match <b>“{q}”</b>.</p>
+            ) : filter === 'missing' ? (
+              <p className="empty">No missing-form campers match <b>“{q}”</b>.</p>
+            ) : (
+              <p className="empty">No one matches <b>“{q}”</b>. Check the spelling.</p>
+            )
+          ) : filter === 'checked_in' ? (
+            <p className="empty">No campers are checked in yet.</p>
+          ) : filter === 'missing' ? (
+            <p className="empty">No missing forms — everyone is set.</p>
+          ) : (
+            <p className="empty">No campers yet.</p>
+          )
+        )}
       </div>
 
       <section className="section" style={{ marginTop: 20 }}>

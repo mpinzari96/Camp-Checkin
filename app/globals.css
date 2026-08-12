@@ -79,6 +79,12 @@ a { color: inherit; text-decoration: none; }
 .stat b { display: block; font-size: 22px; line-height: 1.1; color: var(--pine-deep); font-variant-numeric: tabular-nums; }
 .stat span { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 
+/* Stat tiles double as the roster status filter (buttons). */
+button.stat { width: 100%; min-height: 44px; cursor: pointer; font: inherit; -webkit-appearance: none; }
+.stat.active { border-color: var(--pine); box-shadow: inset 0 0 0 2px var(--pine); background: var(--ok-bg); }
+.stat.active b { color: var(--pine-deep); }
+.stat.active span { color: var(--pine-deep); }
+
 /* ---------- Search ---------- */
 .searchwrap { position: sticky; top: 64px; z-index: 20; padding: 8px 0 10px; background: var(--paper); }
 .search {

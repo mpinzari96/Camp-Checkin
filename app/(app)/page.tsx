@@ -3,19 +3,23 @@
 import { useMemo, useState, useDeferredValue } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRegistrants } from '@/hooks/useRegistrants';
-import { buildIndex, search } from '@/lib/search';
-import { AddRegistrantSheet, CheckStateChip, LiabilityChip, Toast } from '@/components/ui';
+import { buildIndex, search, applyStatusFilter, type StatusFilter } from '@/lib/search';
+import { AddRegistrantSheet, CheckStateChip, LiabilityChip, StatFilters, Toast } from '@/components/ui';
 
 export default function Dashboard() {
   const router = useRouter();
   const { list, loading, error, online, addRegistrant } = useRegistrants();
   const [q, setQ] = useState('');
   const deferredQ = useDeferredValue(q); // keeps typing at 60fps on slow phones
+  const [filter, setFilter] = useState<StatusFilter>('all');
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const index = useMemo(() => buildIndex(list), [list]);
-  const results = useMemo(() => search(index, list, deferredQ), [index, list, deferredQ]);
+  const results = useMemo(
+    () => applyStatusFilter(search(index, list, deferredQ), filter),
+    [index, list, deferredQ, filter]
+  );
 
   const stats = useMemo(() => {
     const total = list.length;
@@ -30,11 +34,11 @@ export default function Dashboard() {
         <div className="offline-banner">Reconnecting… changes made now will sync when back online.</div>
       )}
 
-      <div className="stats" aria-label="Camp totals">
-        <div className="stat"><b>{stats.total}</b><span>Registered</span></div>
-        <div className="stat"><b>{stats.checkedIn}</b><span>Checked in</span></div>
-        <div className="stat"><b>{stats.missing}</b><span>Missing forms</span></div>
-      </div>
+      <StatFilters
+        counts={{ total: stats.total, checkedIn: stats.checkedIn, missing: stats.missing }}
+        active={filter}
+        onChange={setFilter}
+      />
 
       <div className="searchwrap">
         <div className="search">
@@ -81,9 +85,23 @@ export default function Dashboard() {
             </button>
           ))}
           {results.length === 0 && (
-            <p className="empty">
-              No one matches <b>“{q}”</b>. Check the spelling, or add them as a walk-in with the + button.
-            </p>
+            q.trim() ? (
+              filter === 'checked_in' ? (
+                <p className="empty">No checked-in campers match <b>“{q}”</b>.</p>
+              ) : filter === 'missing' ? (
+                <p className="empty">No missing-form campers match <b>“{q}”</b>.</p>
+              ) : (
+                <p className="empty">
+                  No one matches <b>“{q}”</b>. Check the spelling, or add them as a walk-in with the + button.
+                </p>
+              )
+            ) : filter === 'checked_in' ? (
+              <p className="empty">No campers are checked in yet.</p>
+            ) : filter === 'missing' ? (
+              <p className="empty">No missing forms — everyone is set.</p>
+            ) : (
+              <p className="empty">No campers yet. Add a walk-in with the + button.</p>
+            )
           )}
         </div>
       )}
