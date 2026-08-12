@@ -68,6 +68,9 @@ export default function RegistrantProfile() {
         <div className="badges">
           <LiabilityChip r={r} large />
           <CheckStateChip r={r} large />
+          {r.days_attending != null && (
+            <span className="badge-lg warn">📅 Partial stay · {r.days_attending} day{r.days_attending === 1 ? '' : 's'}</span>
+          )}
         </div>
         <div className="row-actions">
           <button

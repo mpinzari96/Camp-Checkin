@@ -74,6 +74,9 @@ export default function Dashboard() {
               <div className="status">
                 <LiabilityChip r={r} />
                 <CheckStateChip r={r} />
+                {r.days_attending != null && (
+                  <span className="chip warn">📅 {r.days_attending} day{r.days_attending === 1 ? '' : 's'}</span>
+                )}
               </div>
             </button>
           ))}

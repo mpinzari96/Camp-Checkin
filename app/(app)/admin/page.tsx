@@ -32,7 +32,7 @@ const EDITABLE: Array<{ key: keyof Registrant; label: string; type?: string }> =
 
 const CSV_COLS: Array<keyof Registrant> = [
   'first_name', 'last_name', 'preferred_name', 'age', 'gender', 'church', 'city', 'state',
-  'email', 'phone', 'merch_size', 'registration_status', 'liability_complete',
+  'email', 'phone', 'merch_size', 'registration_status', 'days_attending', 'liability_complete',
   'checked_in_at', 'emergency_name', 'emergency_relationship',
   'emergency_phone', 'allergies', 'medical_notes', 'special_notes', 'notes',
 ];
@@ -212,6 +212,7 @@ function EditSheet({
   const [f, setF] = useState<Record<string, string>>(() =>
     Object.fromEntries(EDITABLE.map(({ key }) => [key, r[key] == null ? '' : String(r[key])]))
   );
+  const [days, setDays] = useState<number | null>(r.days_attending);
   const [saving, setSaving] = useState(false);
 
   return (
@@ -230,6 +231,15 @@ function EditSheet({
             />
           </div>
         ))}
+        <div className="field">
+          <label>Days attending</label>
+          <div className="seg">
+            <button type="button" aria-pressed={days === null} onClick={() => setDays(null)}>Full</button>
+            <button type="button" aria-pressed={days === 1} onClick={() => setDays(1)}>1</button>
+            <button type="button" aria-pressed={days === 2} onClick={() => setDays(2)}>2</button>
+            <button type="button" aria-pressed={days === 3} onClick={() => setDays(3)}>3</button>
+          </div>
+        </div>
         <button
           className="btn-block"
           disabled={saving}
@@ -240,6 +250,7 @@ function EditSheet({
               const raw = f[key].trim();
               (fields as any)[key] = raw === '' ? null : type === 'number' ? Number(raw) : raw;
             }
+            fields.days_attending = days;
             await onSave(fields);
             setSaving(false);
           }}

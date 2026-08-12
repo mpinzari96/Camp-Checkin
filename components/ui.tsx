@@ -53,6 +53,7 @@ export function AddRegistrantSheet({
   });
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [liability, setLiability] = useState(false);
+  const [days, setDays] = useState<number | null>(null);
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setF((p) => ({ ...p, [k]: e.target.value }));
@@ -77,6 +78,7 @@ export function AddRegistrantSheet({
       medical_notes: f.medical_notes.trim() || null,
       notes: f.notes.trim() || null,
       liability_complete: liability,
+      days_attending: days,
     });
     setSaving(false);
     if (!res.ok) setErr(res.message ?? 'Could not save.');
@@ -151,6 +153,16 @@ export function AddRegistrantSheet({
         <div className="field">
           <label htmlFor="no">Notes</label>
           <textarea id="no" value={f.notes} onChange={set('notes')} />
+        </div>
+
+        <div className="field">
+          <label>Days attending</label>
+          <div className="seg">
+            <button type="button" aria-pressed={days === null} onClick={() => setDays(null)}>Full</button>
+            <button type="button" aria-pressed={days === 1} onClick={() => setDays(1)}>1</button>
+            <button type="button" aria-pressed={days === 2} onClick={() => setDays(2)}>2</button>
+            <button type="button" aria-pressed={days === 3} onClick={() => setDays(3)}>3</button>
+          </div>
         </div>
 
         <div className="field">

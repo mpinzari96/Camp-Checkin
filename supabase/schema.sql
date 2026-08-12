@@ -72,6 +72,7 @@ create table public.registrants (
     check (registration_status in ('registered','walk_in','cancelled')),
   cabin             text,          -- future
   small_group       text,          -- future
+  days_attending    int check (days_attending in (1,2,3)),  -- 1-3 = partial stay; null = full stay
 
   -- Liability form (set manually in-app via the set_liability RPC)
   liability_complete     boolean not null default false,

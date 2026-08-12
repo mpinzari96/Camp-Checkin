@@ -25,6 +25,7 @@ export interface Registrant {
   registration_status: 'registered' | 'walk_in' | 'cancelled';
   cabin: string | null;
   small_group: string | null;
+  days_attending: number | null;
   liability_complete: boolean;
   liability_submitted_at: string | null;
   checked_in_at: string | null;
